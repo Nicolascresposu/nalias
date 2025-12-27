@@ -19,7 +19,11 @@ use crate::{platform, wrapper};
 
 pub fn dispatch(cli: Cli) -> Result<i32> {
     let paths = AppPaths::resolve()?;
-    match cli.command {
+    let command = cli.command.unwrap_or(Command::Init(InitArgs {
+        force: true,
+        skip_path: false,
+    }));
+    match command {
         Command::Init(args) => init(&paths, args),
         Command::Add(args) => add(&paths, args),
         Command::Run(args) => run(&paths, args, cli.verbose),

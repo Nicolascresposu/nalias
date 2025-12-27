@@ -73,6 +73,25 @@ fn complete_alias_lifecycle() {
 }
 
 #[test]
+fn launching_without_arguments_initializes_and_force_updates() {
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("home");
+
+    succeed(&home, &[]);
+    let installed = home.join("nalias.exe");
+    assert!(installed.is_file());
+    assert!(home.join("aliases.json").is_file());
+    assert!(home.join("bin").is_dir());
+
+    succeed(&home, &["add", "preserved", "echo preserved"]);
+    std::fs::write(&installed, b"old executable").unwrap();
+    succeed(&home, &[]);
+
+    assert!(std::fs::metadata(&installed).unwrap().len() > 1024);
+    assert!(succeed(&home, &["show", "preserved"]).status.success());
+}
+
+#[test]
 fn forwards_arguments_and_supports_dry_run() {
     let temp = tempfile::tempdir().unwrap();
     let home = temp.path().join("home");

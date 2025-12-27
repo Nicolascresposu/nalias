@@ -14,7 +14,7 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub verbose: bool,
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -43,7 +43,7 @@ pub enum Command {
     Uninstall(UninstallArgs),
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Default)]
 pub struct InitArgs {
     /// Reinstall the executable even if one is already installed.
     #[arg(long)]
