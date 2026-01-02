@@ -65,6 +65,11 @@ fn init(paths: &AppPaths, args: InitArgs) -> Result<i32> {
         .map_err(|e| NaliasError::io("could not locate the running executable", e))?;
     if same_path(&current, &paths.executable) {
         println!("Executable is already running from the install location.");
+    } else if paths.executable.exists() && args.force && files_equal(&current, &paths.executable)? {
+        println!(
+            "Installed executable already matches this build: {}",
+            paths.executable.display()
+        );
     } else if !paths.executable.exists() || args.force {
         let bytes = fs::read(&current)
             .map_err(|e| NaliasError::io("could not read the running executable", e))?;

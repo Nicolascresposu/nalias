@@ -14,7 +14,7 @@ Download `nalias.exe`, then execute it or run:
 .\nalias.exe
 ```
 
-Running `nalias.exe` without arguments—including double-clicking it in File Explorer—is equivalent to `nalias init --force`. It copies or updates the executable at `%LOCALAPPDATA%\Nalias\nalias.exe`, creates the configuration and wrapper directory, and adds `%LOCALAPPDATA%\Nalias\bin` to the current user's PATH. Administrator privileges are not required. Restart terminals that were already open. Use the explicit `init --skip-path` command when PATH should remain unchanged.
+Running `nalias.exe` without arguments—including double-clicking it in File Explorer—is equivalent to `nalias init --force`. It copies or updates the executable at `%LOCALAPPDATA%\Nalias\nalias.exe`, but first compares both files byte for byte and skips replacement when the installed build is already identical. It also creates the configuration and wrapper directory and adds `%LOCALAPPDATA%\Nalias\bin` to the current user's PATH. Administrator privileges are not required. Restart terminals that were already open. Use the explicit `init --skip-path` command when PATH should remain unchanged.
 
 ## Build and release
 
@@ -42,7 +42,7 @@ nalias remove status --yes
 
 | Command | Purpose |
 | --- | --- |
-| `nalias` | Initialize Nalias and force-update the installed executable. |
+| `nalias` | Initialize Nalias and update the installed executable only when it differs. |
 | `nalias init [--force] [--skip-path]` | Initialize and install Nalias. |
 | `nalias add <name> <command> [--description <text>] [--shell cmd\|powershell\|direct] [--force]` | Add or explicitly replace an alias. |
 | `nalias run <name> [--dry-run] [arguments...]` | Resolve and execute an alias. Usually called by wrappers. |

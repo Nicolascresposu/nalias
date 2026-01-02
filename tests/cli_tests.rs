@@ -83,9 +83,16 @@ fn launching_without_arguments_initializes_and_force_updates() {
     assert!(home.join("aliases.json").is_file());
     assert!(home.join("bin").is_dir());
 
+    let output = succeed(&home, &[]);
+    assert!(
+        String::from_utf8_lossy(&output.stdout)
+            .contains("Installed executable already matches this build")
+    );
+
     succeed(&home, &["add", "preserved", "echo preserved"]);
     std::fs::write(&installed, b"old executable").unwrap();
-    succeed(&home, &[]);
+    let output = succeed(&home, &[]);
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Installed executable:"));
 
     assert!(std::fs::metadata(&installed).unwrap().len() > 1024);
     assert!(succeed(&home, &["show", "preserved"]).status.success());
