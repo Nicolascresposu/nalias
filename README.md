@@ -2,6 +2,19 @@
 
 Nalias is a lightweight, persistent command-alias manager for Windows. It compiles to one native Rust executable, stores definitions in one versioned JSON file, and exposes aliases to both Command Prompt and PowerShell through tiny generated `.cmd` wrappers.
 
+This repository also contains [Nalias Lite](crates/nalias-lite/README.md), an independent dependency-light executable that embeds commands directly in wrappers. It is intended for users who prefer minimum binary size over centralized JSON and runtime dispatch.
+
+| Capability | Nalias | Nalias Lite |
+| --- | --- | --- |
+| Release size in the current build | 551 KiB | 182 KiB |
+| Wrapper behavior | Delegates to `nalias.exe run` | Executes the command directly |
+| Source of truth | Versioned `aliases.json` | Generated `.cmd` wrapper |
+| Shell modes | CMD, PowerShell, direct | CMD only |
+| Runtime protection and diagnostics | Full | None |
+| Management | Add, list, show, edit, rename, remove, repair, doctor, uninstall | Add, list, remove |
+
+The variants use separate `%LOCALAPPDATA%` roots and distinct wrapper markers. They can be installed independently, but defining the same alias in both creates normal PATH-order ambiguity; install only the bin directory whose alias should win.
+
 ## Why Nalias exists
 
 Shell-specific profile aliases are easy to lose, differ between CMD and PowerShell, and are often unavailable in newly opened shells. Nalias gives both shells the same user-scoped alias directory and keeps commands editable in a central configuration file.
@@ -136,9 +149,10 @@ Rust 2024 edition and stable Rust are used. Run the full local checks with:
 
 ```powershell
 cargo fmt --all -- --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace
 cargo build --release
+cargo build --release -p nalias-lite
 ```
 
 Tests create temporary homes through `NALIAS_HOME`; they do not edit the developer's real `%LOCALAPPDATA%` or registry PATH. The Windows integration tests exercise initialization, wrappers, execution, listing, showing, editing, renaming, removal, dry runs, recursion, and corrupt-config safety.

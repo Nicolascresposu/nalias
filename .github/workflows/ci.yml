@@ -18,14 +18,16 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Run tests
-        run: cargo test --all
+        run: cargo test --workspace
       - name: Build release executable
-        run: cargo build --release
-      - name: Upload nalias.exe
+        run: cargo build --release --workspace
+      - name: Upload Windows executables
         uses: actions/upload-artifact@v4
         with:
           name: nalias-windows-x86_64
-          path: target/release/nalias.exe
+          path: |
+            target/release/nalias.exe
+            target/release/nalias-lite.exe
           if-no-files-found: error
