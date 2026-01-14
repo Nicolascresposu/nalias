@@ -6,14 +6,14 @@ This repository also contains [Nalias Lite](crates/nalias-lite/README.md), an in
 
 | Capability | Nalias | Nalias Lite |
 | --- | --- | --- |
-| Release size in the current build | 551 KiB | 182 KiB |
+| Release size in the current build | 551 KiB | 152.5 KiB |
 | Wrapper behavior | Delegates to `nalias.exe run` | Executes the command directly |
 | Source of truth | Versioned `aliases.json` | Generated `.cmd` wrapper |
 | Shell modes | CMD, PowerShell, direct | CMD only |
 | Runtime protection and diagnostics | Full | None |
-| Management | Add, list, show, edit, rename, remove, repair, doctor, uninstall | Add, list, remove |
+| Management | Add, list, show, edit, rename, remove, repair, doctor, uninstall | Add, open folder, remove |
 
-The variants use separate `%LOCALAPPDATA%` roots and distinct wrapper markers. They can be installed independently, but defining the same alias in both creates normal PATH-order ambiguity; install only the bin directory whose alias should win.
+The variants use separate `%LOCALAPPDATA%` roots and distinct wrapper markers. Nalias Lite does not install itself or modify PATH. Defining the same alias in both bin directories creates normal PATH-order ambiguity; add only the bin directory whose alias should win.
 
 ## Why Nalias exists
 

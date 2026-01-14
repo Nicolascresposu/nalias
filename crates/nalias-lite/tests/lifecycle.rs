@@ -48,7 +48,6 @@ fn succeed(home: &Path, arguments: &[&str]) -> Output {
 #[test]
 fn direct_wrapper_lifecycle() {
     let home = TestHome::new();
-    succeed(&home.0, &[]);
     succeed(&home.0, &["add", "hello", "echo hello"]);
 
     let wrapper = home.0.join("bin").join("hello.cmd");
@@ -67,11 +66,6 @@ fn direct_wrapper_lifecycle() {
     assert!(output.status.success());
     assert!(String::from_utf8_lossy(&output.stdout).contains("hello world"));
 
-    let output = succeed(&home.0, &["list"]);
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("hello"));
-    assert!(stdout.contains("echo hello"));
-
     succeed(&home.0, &["add", "hello", "echo changed", "--force"]);
     assert!(
         std::fs::read_to_string(&wrapper)
@@ -85,8 +79,9 @@ fn direct_wrapper_lifecycle() {
 #[test]
 fn never_overwrites_or_deletes_unrelated_wrappers() {
     let home = TestHome::new();
-    succeed(&home.0, &[]);
-    let unrelated = home.0.join("bin").join("mine.cmd");
+    let bin = home.0.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let unrelated = bin.join("mine.cmd");
     std::fs::write(&unrelated, "@echo off\r\necho user-owned\r\n").unwrap();
 
     assert!(

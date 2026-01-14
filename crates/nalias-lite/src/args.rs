@@ -1,17 +1,13 @@
-pub const HELP: &str = "Nalias Lite - minimal direct-wrapper aliases for Windows\n\nUsage:\n  nalias-lite [COMMAND]\n\nCommands:\n  init [--force] [--skip-path]       Install Nalias Lite\n  add <name> <command> [--force]     Create a direct .cmd alias\n  list                               List managed aliases\n  remove <name> [--yes]              Remove an alias\n  help                               Print this help\n\nRunning without arguments is equivalent to 'init --force'.\n";
+pub const HELP: &str = "Nalias Lite - minimal direct-wrapper aliases for Windows\n\nUsage:\n  nalias-lite [COMMAND]\n\nCommands:\n  add <name> <command> [--force]     Create a direct .cmd alias\n  show                               Open the alias folder\n  remove <name> [--yes]              Remove an alias\n  help                               Print this help\n\nRunning without arguments is equivalent to 'show'.\n";
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
-    Init {
-        force: bool,
-        skip_path: bool,
-    },
     Add {
         name: String,
         command: String,
         force: bool,
     },
-    List,
+    Show,
     Remove {
         name: String,
         yes: bool,
@@ -20,31 +16,21 @@ pub enum Command {
     Version,
 }
 
-pub fn parse() -> Result<Command, String> {
+pub fn parse() -> Result<Command, &'static str> {
     parse_values(std::env::args().skip(1).collect())
 }
 
-fn parse_values(values: Vec<String>) -> Result<Command, String> {
+fn parse_values(values: Vec<String>) -> Result<Command, &'static str> {
     if values.is_empty() {
-        return Ok(Command::Init {
-            force: true,
-            skip_path: false,
-        });
+        return Ok(Command::Show);
     }
     match values[0].as_str() {
         "help" | "--help" | "-h" => exact_len(&values, 1).map(|()| Command::Help),
         "--version" | "-V" => exact_len(&values, 1).map(|()| Command::Version),
-        "init" => {
-            let options = &values[1..];
-            reject_unknown(options, &["--force", "--skip-path"])?;
-            Ok(Command::Init {
-                force: options.iter().any(|value| value == "--force"),
-                skip_path: options.iter().any(|value| value == "--skip-path"),
-            })
-        }
+        "show" => exact_len(&values, 1).map(|()| Command::Show),
         "add" => {
             if values.len() < 3 {
-                return Err("usage: nalias-lite add <name> <command> [--force]".to_owned());
+                return Err("usage: nalias-lite add <name> <command> [--force]");
             }
             reject_unknown(&values[3..], &["--force"])?;
             Ok(Command::Add {
@@ -53,10 +39,9 @@ fn parse_values(values: Vec<String>) -> Result<Command, String> {
                 force: values[3..].iter().any(|value| value == "--force"),
             })
         }
-        "list" => exact_len(&values, 1).map(|()| Command::List),
         "remove" => {
             if values.len() < 2 {
-                return Err("usage: nalias-lite remove <name> [--yes]".to_owned());
+                return Err("usage: nalias-lite remove <name> [--yes]");
             }
             reject_unknown(&values[2..], &["--yes", "-y"])?;
             Ok(Command::Remove {
@@ -66,24 +51,24 @@ fn parse_values(values: Vec<String>) -> Result<Command, String> {
                     .any(|value| value == "--yes" || value == "-y"),
             })
         }
-        unknown => Err(format!("unknown command '{unknown}'\n\n{HELP}")),
+        _ => Err("unknown command; run 'nalias-lite help'"),
     }
 }
 
-fn exact_len(values: &[String], length: usize) -> Result<(), String> {
+fn exact_len(values: &[String], length: usize) -> Result<(), &'static str> {
     if values.len() == length {
         Ok(())
     } else {
-        Err("too many arguments".to_owned())
+        Err("too many arguments")
     }
 }
 
-fn reject_unknown(values: &[String], allowed: &[&str]) -> Result<(), String> {
-    if let Some(value) = values
+fn reject_unknown(values: &[String], allowed: &[&str]) -> Result<(), &'static str> {
+    if values
         .iter()
-        .find(|value| !allowed.contains(&value.as_str()))
+        .any(|value| !allowed.contains(&value.as_str()))
     {
-        Err(format!("unknown option '{value}'"))
+        Err("unknown option")
     } else {
         Ok(())
     }
@@ -98,19 +83,13 @@ mod tests {
     }
 
     #[test]
-    fn no_arguments_force_initializes() {
-        assert_eq!(
-            parse_values(Vec::new()).unwrap(),
-            Command::Init {
-                force: true,
-                skip_path: false
-            }
-        );
+    fn no_arguments_show_the_folder() {
+        assert_eq!(parse_values(Vec::new()).unwrap(), Command::Show);
     }
 
     #[test]
     fn parses_minimal_commands() {
-        assert_eq!(parse_values(values(&["list"])).unwrap(), Command::List);
+        assert_eq!(parse_values(values(&["show"])).unwrap(), Command::Show);
         assert_eq!(
             parse_values(values(&["add", "gs", "git status", "--force"])).unwrap(),
             Command::Add {
