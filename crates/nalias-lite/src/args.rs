@@ -1,7 +1,11 @@
-pub const HELP: &str = "Nalias Lite - minimal direct-wrapper aliases for Windows\n\nUsage:\n  nalias-lite [COMMAND]\n\nCommands:\n  add <name> <command> [--force]     Create a direct .cmd alias\n  show                               Open the alias folder\n  remove <name> [--yes]              Remove an alias\n  help                               Print this help\n\nRunning without arguments is equivalent to 'show'.\n";
+pub const HELP: &str = "Nalias Lite - minimal direct-wrapper aliases for Windows\n\nUsage:\n  nalias-lite [COMMAND]\n\nCommands:\n  init [--force] [--skip-path]       Install Nalias Lite\n  add <name> <command> [--force]     Create a direct .cmd alias\n  show                               Open the alias folder\n  remove <name> [--yes]              Remove an alias\n  help                               Print this help\n\nRunning without arguments is equivalent to 'init --force'.\n";
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
+    Init {
+        force: bool,
+        skip_path: bool,
+    },
     Add {
         name: String,
         command: String,
@@ -22,11 +26,21 @@ pub fn parse() -> Result<Command, &'static str> {
 
 fn parse_values(values: Vec<String>) -> Result<Command, &'static str> {
     if values.is_empty() {
-        return Ok(Command::Show);
+        return Ok(Command::Init {
+            force: true,
+            skip_path: false,
+        });
     }
     match values[0].as_str() {
         "help" | "--help" | "-h" => exact_len(&values, 1).map(|()| Command::Help),
         "--version" | "-V" => exact_len(&values, 1).map(|()| Command::Version),
+        "init" => {
+            reject_unknown(&values[1..], &["--force", "--skip-path"])?;
+            Ok(Command::Init {
+                force: values[1..].iter().any(|value| value == "--force"),
+                skip_path: values[1..].iter().any(|value| value == "--skip-path"),
+            })
+        }
         "show" => exact_len(&values, 1).map(|()| Command::Show),
         "add" => {
             if values.len() < 3 {
@@ -83,8 +97,14 @@ mod tests {
     }
 
     #[test]
-    fn no_arguments_show_the_folder() {
-        assert_eq!(parse_values(Vec::new()).unwrap(), Command::Show);
+    fn no_arguments_force_initialize() {
+        assert_eq!(
+            parse_values(Vec::new()).unwrap(),
+            Command::Init {
+                force: true,
+                skip_path: false
+            }
+        );
     }
 
     #[test]

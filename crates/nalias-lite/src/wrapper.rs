@@ -130,9 +130,11 @@ mod tests {
     fn wrappers_contain_only_marker_command_and_forwarding() {
         let temporary = tempfile_path();
         let paths = AppPaths {
+            root: temporary.clone(),
             bin: temporary.join("bin"),
+            executable: temporary.join("nalias-lite.exe"),
         };
-        paths.ensure_directory().unwrap();
+        paths.ensure_directories().unwrap();
         write(&paths, "gs", "git status").unwrap();
         let body = fs::read_to_string(path(&paths, "gs").unwrap()).unwrap();
         assert_eq!(

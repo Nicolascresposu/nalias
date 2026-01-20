@@ -77,6 +77,28 @@ fn direct_wrapper_lifecycle() {
 }
 
 #[test]
+fn no_arguments_install_update_and_preserve_aliases() {
+    let home = TestHome::new();
+    let first = succeed(&home.0, &[]);
+    assert!(String::from_utf8_lossy(&first.stdout).contains("Installed"));
+    let installed = home.0.join("nalias-lite.exe");
+    assert!(installed.is_file());
+
+    succeed(&home.0, &["add", "preserved", "echo preserved"]);
+    let identical = succeed(&home.0, &[]);
+    assert!(
+        String::from_utf8_lossy(&identical.stdout)
+            .contains("Installed executable already matches this build")
+    );
+
+    std::fs::write(&installed, b"old executable").unwrap();
+    let updated = succeed(&home.0, &[]);
+    assert!(String::from_utf8_lossy(&updated.stdout).contains("Installed"));
+    assert!(std::fs::metadata(installed).unwrap().len() > 1024);
+    assert!(home.0.join("bin").join("preserved.cmd").is_file());
+}
+
+#[test]
 fn never_overwrites_or_deletes_unrelated_wrappers() {
     let home = TestHome::new();
     let bin = home.0.join("bin");

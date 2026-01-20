@@ -1,6 +1,6 @@
 # Nalias Lite
 
-Nalias Lite is an intentionally minimal direct-wrapper alias creator for Windows. It does not install itself, modify PATH, maintain JSON, or participate when an alias runs.
+Nalias Lite is an intentionally minimal direct-wrapper alias creator for Windows. It installs itself and configures the current user's PATH, but does not maintain JSON or participate when an alias runs.
 
 ```text
 nalias-lite add gs "git status"
@@ -18,41 +18,45 @@ From the repository root:
 cargo build --release -p nalias-lite
 ```
 
-The executable is written to `target\release\nalias-lite.exe`. It can remain anywhere convenient; Nalias Lite never copies or updates itself.
+The executable is written to `target\release\nalias-lite.exe`.
 
-With the current stable toolchain, the release executable is 156,160 bytes (152.5 KiB). Controlled builds produced:
+With the current stable toolchain, the release executable is 166,912 bytes (163 KiB). Restoring self-installation and automatic PATH management added only 10.5 KiB compared with the manual-install build. Controlled builds produced:
 
 | Configuration | Size |
 | --- | ---: |
-| `opt-level = "z"`, fat LTO | 152.5 KiB |
-| `opt-level = "s"`, fat LTO | 154 KiB |
-| `opt-level = "z"`, thin LTO | 165 KiB |
-| `"z"`, fat LTO, explicit MSVC `/OPT:REF /OPT:ICF` | 152.5 KiB |
+| `opt-level = "z"`, fat LTO | 163 KiB |
+| `opt-level = "s"`, fat LTO | 165.5 KiB |
+| `opt-level = "z"`, thin LTO | 176.5 KiB |
+| `"z"`, fat LTO, explicit MSVC `/OPT:REF /OPT:ICF` | 163 KiB |
 
 The project therefore retains `"z"` with fat LTO. Explicit linker folding made no difference because the optimized MSVC link already performed equivalent elimination. Exact sizes may vary between Rust releases.
 
-## One-time PATH setup
+## Installation
 
-Aliases are written to:
+Run or double-click `nalias-lite.exe`. A no-argument launch is equivalent to `init --force` and installs to:
 
 ```text
+%LOCALAPPDATA%\NaliasLite\nalias-lite.exe
 %LOCALAPPDATA%\NaliasLite\bin
 ```
 
-Add that directory to the current user's PATH through **Settings → System → About → Advanced system settings → Environment Variables**. Restart terminals that were already open afterward. Nalias Lite deliberately does not modify the registry or PATH itself.
+The bin directory is added to `HKEY_CURRENT_USER\Environment\Path` without administrator privileges, duplicates are avoided, and Windows receives an environment-change notification. Restart terminals that were already open.
 
-`NALIAS_LITE_HOME` changes the root directory when an isolated location is needed. Its `bin` subdirectory is still where wrappers are written.
+When updating, run the new downloaded executable. The installed copy is compared byte for byte and is replaced only when it differs.
+
+Use `init --skip-path` to install without changing PATH. `NALIAS_LITE_HOME` changes the root directory and disables registry PATH modification for isolated testing.
 
 ## Commands
 
 ```text
+nalias-lite init [--force] [--skip-path]
 nalias-lite add <name> <command> [--force]
 nalias-lite show
 nalias-lite remove <name> [--yes]
 nalias-lite help
 ```
 
-Running or double-clicking `nalias-lite.exe` without arguments is equivalent to `show` and opens the alias folder in File Explorer.
+Running or double-clicking `nalias-lite.exe` without arguments is equivalent to `init --force`. Use `show` to open the alias folder in File Explorer.
 
 Examples:
 
@@ -80,6 +84,6 @@ Alias names are validated against path traversal and Windows device names. Exist
 
 ## Deliberate limitations
 
-Nalias Lite has no list, descriptions, timestamps, shell selection, enable/disable state, self-installation, PATH management, JSON, backup, runtime recursion protection, doctor, repair, rename, or uninstall. Editing is performed directly or with `add --force`.
+Nalias Lite has no list, descriptions, timestamps, shell selection, enable/disable state, JSON, backup, runtime recursion protection, doctor, repair, rename, or uninstall. Editing is performed directly or with `add --force`.
 
 Use full Nalias when centralized JSON, robust shell dispatch, runtime validation, or automated installation is more important than minimum executable size.

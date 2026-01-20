@@ -33,6 +33,7 @@ fn run() -> Result<(), &'static str> {
         command => {
             let paths = AppPaths::resolve()?;
             match command {
+                Command::Init { force, skip_path } => init(&paths, force, skip_path),
                 Command::Add {
                     name,
                     command,
@@ -46,8 +47,47 @@ fn run() -> Result<(), &'static str> {
     }
 }
 
+fn init(paths: &AppPaths, force: bool, skip_path: bool) -> Result<(), &'static str> {
+    paths.ensure_directories()?;
+    let current = std::env::current_exe().map_err(|_| "could not locate this executable")?;
+    if paths.same_path(&current, &paths.executable) {
+        println!("Executable is already running from the install location.");
+    } else if paths.executable.exists()
+        && force
+        && paths.files_equal(&current, &paths.executable)?
+    {
+        println!("Installed executable already matches this build.");
+    } else if !paths.executable.exists() || force {
+        let bytes = fs::read(current).map_err(|_| "could not read this executable")?;
+        wrapper::atomic_write(&paths.executable, &bytes)?;
+        println!("Installed {}.", paths.executable.display());
+    } else {
+        println!("An executable is already installed; use init --force to replace it.");
+    }
+
+    if skip_path {
+        println!("Skipped user PATH modification.");
+    } else if AppPaths::is_overridden() {
+        println!("Skipped user PATH modification because NALIAS_LITE_HOME is set.");
+    } else {
+        let old = platform::user_path()?;
+        let new = paths::add_path_entry(&old, &paths.bin);
+        if new == old {
+            println!("The Nalias Lite bin directory is already on the user PATH.");
+        } else {
+            platform::set_user_path(&new)?;
+            if let Err(error) = platform::broadcast_environment_change() {
+                eprintln!("warning: {error}");
+            }
+            println!("Added {} to the user PATH.", paths.bin.display());
+        }
+    }
+    println!("Nalias Lite is ready. Restart terminals that were already open.");
+    Ok(())
+}
+
 fn add(paths: &AppPaths, name: &str, command: &str, force: bool) -> Result<(), &'static str> {
-    paths.ensure_directory()?;
+    paths.ensure_directories()?;
     wrapper::validate_name(name)?;
     if command.is_empty() {
         return Err("the command cannot be empty");
@@ -68,7 +108,7 @@ fn add(paths: &AppPaths, name: &str, command: &str, force: bool) -> Result<(), &
 }
 
 fn show(paths: &AppPaths) -> Result<(), &'static str> {
-    paths.ensure_directory()?;
+    paths.ensure_directories()?;
     platform::open_folder(&paths.bin)?;
     println!("Opened {}.", paths.bin.display());
     Ok(())
