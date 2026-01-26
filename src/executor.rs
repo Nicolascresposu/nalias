@@ -11,6 +11,7 @@ const STACK_SEPARATOR: char = ';';
 pub struct ExecutionPlan {
     pub program: String,
     pub arguments: Vec<String>,
+    pub raw_argument: Option<String>,
     pub environment: Vec<(String, String)>,
     pub display: String,
 }
@@ -49,8 +50,8 @@ pub fn plan(alias: &Alias, forwarded: &[String]) -> Result<ExecutionPlan> {
                     "/S".to_owned(),
                     "/V:ON".to_owned(),
                     "/C".to_owned(),
-                    command_line,
                 ],
+                raw_argument: Some(format!("\"{command_line}\"")),
                 environment,
                 display: format!("cmd.exe /D /S /V:ON /C {logical}"),
             })
@@ -65,6 +66,7 @@ pub fn plan(alias: &Alias, forwarded: &[String]) -> Result<ExecutionPlan> {
                     "-Command".to_owned(),
                     command_line.clone(),
                 ],
+                raw_argument: None,
                 environment: Vec::new(),
                 display: format!("powershell.exe -NoLogo -NoProfile -Command {command_line}"),
             })
@@ -86,6 +88,7 @@ pub fn plan(alias: &Alias, forwarded: &[String]) -> Result<ExecutionPlan> {
             Ok(ExecutionPlan {
                 program,
                 arguments: words,
+                raw_argument: None,
                 environment: Vec::new(),
                 display,
             })
@@ -98,13 +101,28 @@ pub fn execute(alias: &Alias, forwarded: &[String], stack: &str, verbose: bool) 
     if verbose {
         eprintln!("nalias: executing [{}] {}", alias.shell, plan.display);
     }
-    let status = Command::new(&plan.program)
-        .args(&plan.arguments)
+    let mut command = Command::new(&plan.program);
+    command.args(&plan.arguments);
+    if let Some(raw_argument) = &plan.raw_argument {
+        append_raw_argument(&mut command, raw_argument);
+    }
+    let status = command
         .envs(plan.environment.iter().map(|(key, value)| (key, value)))
         .env(STACK_ENV, stack)
         .status()
         .map_err(|e| NaliasError::Execution(format!("failed to start '{}': {e}", plan.program)))?;
     Ok(status.code().unwrap_or(5))
+}
+
+#[cfg(windows)]
+fn append_raw_argument(command: &mut Command, argument: &str) {
+    use std::os::windows::process::CommandExt;
+    command.raw_arg(argument);
+}
+
+#[cfg(not(windows))]
+fn append_raw_argument(command: &mut Command, argument: &str) {
+    command.arg(argument);
 }
 
 /// Builds the actual CMD invocation. Forwarded data is carried in environment
@@ -258,6 +276,24 @@ mod tests {
         assert_eq!(
             environment,
             vec![("NALIAS__FORWARDED_0".to_owned(), values[0].clone())]
+        );
+    }
+
+    #[test]
+    fn cmd_plan_keeps_the_payload_out_of_crt_argument_quoting() {
+        let alias = Alias {
+            command: "git commit -am".to_owned(),
+            description: None,
+            shell: Shell::Cmd,
+            enabled: true,
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        let execution = plan(&alias, &["first commit".to_owned()]).unwrap();
+        assert_eq!(execution.arguments, ["/D", "/S", "/V:ON", "/C"]);
+        assert_eq!(
+            execution.raw_argument.as_deref(),
+            Some(r#""git commit -am "!NALIAS__FORWARDED_0!"""#)
         );
     }
 

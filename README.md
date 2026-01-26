@@ -124,7 +124,7 @@ Only `HKEY_CURRENT_USER\Environment\Path` is changed. Entries are compared case-
 
 ## Argument forwarding and shells
 
-- `cmd` (default) uses `cmd.exe /D /S /V:ON /C`, so operators in the stored command such as `&&`, `|`, and redirection work. Forwarded values travel in per-argument environment placeholders and expand only in CMD's late parsing phase, after shell metacharacters have been recognized.
+- `cmd` (default) uses `cmd.exe /D /S /V:ON /C`, so operators in the stored command such as `&&`, `|`, and redirection work. Forwarded values travel in per-argument environment placeholders and expand only in CMD's late parsing phase, after shell metacharacters have been recognized. The `/C` payload is appended as a raw Windows argument so Rust's CRT-compatible quoting does not add a second, incompatible quote layer for `cmd.exe`.
 - `powershell` uses `powershell.exe -NoLogo -NoProfile -Command` and single-quoted literal forwarded values.
 - `direct` parses the stored command with Microsoft C command-line quoting rules, starts the program with `std::process::Command`, then passes forwarded arguments as native argument values. Use direct mode when exact arbitrary argument preservation matters and shell operators are not needed.
 

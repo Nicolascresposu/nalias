@@ -125,6 +125,32 @@ fn forwards_arguments_and_supports_dry_run() {
     assert!(stdout.contains("%PATH%"), "{stdout}");
     assert!(stdout.contains("!bang!"), "{stdout}");
 
+    let probe = temp.path().join("argument probe.ps1");
+    std::fs::write(
+        &probe,
+        r#"[Console]::WriteLine("COUNT={0}", $args.Count)
+foreach ($Value in $args) { [Console]::WriteLine("ARG=<{0}>", $Value) }
+"#,
+    )
+    .unwrap();
+    let powershell = PathBuf::from(std::env::var_os("SystemRoot").unwrap())
+        .join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+    let probe_command = format!(
+        "\"{}\" -NoLogo -NoProfile -File \"{}\"",
+        powershell.display(),
+        probe.display()
+    );
+    succeed(&home, &["add", "argument-probe", probe_command.as_str()]);
+    let output = run_wrapper(&home, "argument-probe", &["first commit"]);
+    assert!(
+        output.status.success(),
+        "argument probe failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("COUNT=1"), "{stdout}");
+    assert!(stdout.contains("ARG=<first commit>"), "{stdout}");
+
     let output = succeed(&home, &["run", "say", "--dry-run"]);
     assert!(String::from_utf8_lossy(&output.stdout).contains("execute:"));
 }
