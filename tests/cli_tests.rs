@@ -78,10 +78,23 @@ fn launching_without_arguments_initializes_and_force_updates() {
     let home = temp.path().join("home");
 
     succeed(&home, &[]);
-    let installed = home.join("nalias.exe");
+    let installed = home.join("bin").join("nalias.exe");
     assert!(installed.is_file());
     assert!(home.join("aliases.json").is_file());
     assert!(home.join("bin").is_dir());
+
+    let mut installed_command = Command::new("nalias.exe");
+    installed_command.arg("--version").env("NALIAS_HOME", &home);
+    prepend_path(&mut installed_command, home.join("bin"));
+    let output = installed_command
+        .output()
+        .expect("installed nalias.exe should resolve through PATH");
+    assert!(
+        output.status.success(),
+        "installed executable failed\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let output = succeed(&home, &[]);
     assert!(
@@ -96,6 +109,40 @@ fn launching_without_arguments_initializes_and_force_updates() {
 
     assert!(std::fs::metadata(&installed).unwrap().len() > 1024);
     assert!(succeed(&home, &["show", "preserved"]).status.success());
+}
+
+#[test]
+fn migrates_the_legacy_executable_and_repairs_wrappers() {
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("home");
+    succeed(&home, &["init", "--skip-path"]);
+    succeed(&home, &["add", "legacy-test", "echo migrated"]);
+
+    let installed = home.join("bin").join("nalias.exe");
+    let legacy = home.join("nalias.exe");
+    std::fs::rename(&installed, &legacy).unwrap();
+
+    let wrapper = home.join("bin").join("legacy-test.cmd");
+    let current_contents = std::fs::read_to_string(&wrapper).unwrap();
+    let legacy_contents = current_contents.replace(
+        &installed.to_string_lossy().to_string(),
+        &legacy.to_string_lossy(),
+    );
+    assert_ne!(current_contents, legacy_contents);
+    std::fs::write(&wrapper, legacy_contents).unwrap();
+
+    let output = succeed(&home, &[]);
+    assert!(installed.is_file());
+    assert!(!legacy.exists());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Removed legacy executable"));
+
+    let repaired_contents = std::fs::read_to_string(&wrapper).unwrap();
+    assert!(repaired_contents.contains(&installed.to_string_lossy().to_string()));
+    assert!(!repaired_contents.contains(&legacy.to_string_lossy().to_string()));
+
+    let output = run_wrapper(&home, "legacy-test", &[]);
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("migrated"));
 }
 
 #[test]
@@ -219,5 +266,6 @@ fn uninstall_preserves_config_and_unrelated_files_when_requested() {
     assert!(home.join("aliases.json").exists());
     assert!(unrelated.exists());
     assert!(!home.join("bin").join("temporary.cmd").exists());
+    assert!(!home.join("bin").join("nalias.exe").exists());
     assert!(!home.join("nalias.exe").exists());
 }

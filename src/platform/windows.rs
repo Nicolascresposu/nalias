@@ -165,7 +165,7 @@ pub fn broadcast_environment_change() -> Result<()> {
     Ok(())
 }
 
-pub fn defer_delete(path: &Path) -> Result<()> {
+pub fn defer_delete(path: &Path, cleanup_root: &Path) -> Result<()> {
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let script = std::env::temp_dir().join(format!(
         "nalias-cleanup-{}-{}.cmd",
@@ -178,8 +178,9 @@ pub fn defer_delete(path: &Path) -> Result<()> {
         .unwrap_or_else(|| Path::new("."))
         .to_string_lossy()
         .replace('%', "%%");
+    let escaped_root = cleanup_root.to_string_lossy().replace('%', "%%");
     let contents = format!(
-        "@echo off\r\nfor /L %%N in (1,1,10) do (\r\n  del /f /q \"{escaped_path}\" >nul 2>&1\r\n  if not exist \"{escaped_path}\" goto done\r\n  ping 127.0.0.1 -n 2 >nul\r\n)\r\n:done\r\nrmdir \"{escaped_parent}\" >nul 2>&1\r\ndel /f /q \"%~f0\" >nul 2>&1\r\n"
+        "@echo off\r\nfor /L %%N in (1,1,10) do (\r\n  del /f /q \"{escaped_path}\" >nul 2>&1\r\n  if not exist \"{escaped_path}\" goto done\r\n  ping 127.0.0.1 -n 2 >nul\r\n)\r\n:done\r\nrmdir \"{escaped_parent}\" >nul 2>&1\r\nrmdir \"{escaped_root}\" >nul 2>&1\r\ndel /f /q \"%~f0\" >nul 2>&1\r\n"
     );
     fs::write(&script, contents)
         .map_err(|e| NaliasError::io("could not create deferred cleanup script", e))?;

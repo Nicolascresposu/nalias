@@ -26,7 +26,7 @@ mod portable {
         Ok(())
     }
 
-    pub fn defer_delete(_: &Path) -> Result<()> {
+    pub fn defer_delete(_: &Path, _: &Path) -> Result<()> {
         Err(NaliasError::Installation(
             "deferred deletion is only available on Windows".to_owned(),
         ))

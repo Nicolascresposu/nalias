@@ -27,7 +27,19 @@ Download `nalias.exe`, then execute it or run:
 .\nalias.exe
 ```
 
-Running `nalias.exe` without arguments—including double-clicking it in File Explorer—is equivalent to `nalias init --force`. It copies or updates the executable at `%LOCALAPPDATA%\Nalias\nalias.exe`, but first compares both files byte for byte and skips replacement when the installed build is already identical. It also creates the configuration and wrapper directory and adds `%LOCALAPPDATA%\Nalias\bin` to the current user's PATH. Administrator privileges are not required. Restart terminals that were already open. Use the explicit `init --skip-path` command when PATH should remain unchanged.
+Running `nalias.exe` without arguments—including double-clicking it in File Explorer—is equivalent to `nalias init --force`. The downloaded file acts as both installer and application: it copies or updates itself at `%LOCALAPPDATA%\Nalias\bin\nalias.exe`, compares both files byte for byte, and skips replacement when the installed build is already identical. Because that same `bin` directory is added to the current user's PATH, both `nalias` and generated aliases are available from new terminals. Administrator privileges are not required. Restart terminals that were already open. Use the explicit `init --skip-path` command when PATH should remain unchanged.
+
+The installed layout is:
+
+```text
+%LOCALAPPDATA%\Nalias\
+├── aliases.json
+└── bin\
+    ├── nalias.exe
+    └── <alias>.cmd
+```
+
+When upgrading an installation made by an older release, initialization moves execution to the `bin` copy, removes the legacy `%LOCALAPPDATA%\Nalias\nalias.exe`, and repairs generated wrappers automatically.
 
 ## Build and release
 
@@ -43,7 +55,7 @@ The optimized standalone binary is `target\release\nalias.exe`. The release prof
 ## Quick start
 
 ```powershell
-nalias init
+nalias init (or just nalias)
 nalias add gs "git status" --description "Show repository status"
 gs --short --branch
 nalias edit gs --command "git status --short"
@@ -82,7 +94,7 @@ Windows resolves:
     %LOCALAPPDATA%\Nalias\bin\gs.cmd
 
 Wrapper invokes:
-    nalias.exe run gs --short
+    %LOCALAPPDATA%\Nalias\bin\nalias.exe run gs --short
 
 Nalias loads:
     %LOCALAPPDATA%\Nalias\aliases.json
@@ -132,7 +144,7 @@ There is no universally lossless representation of every value through `cmd.exe`
 
 ## Security
 
-Aliases are commands the user intentionally authorizes. Listing and loading never execute them. Names are ASCII-only, cannot traverse paths, and reject Windows device names and `nalias`. Wrapper writes reject symlinks and unrelated files. Generated wrappers carry a marker, and repair/uninstall delete only marked wrappers. Forwarded shell arguments are escaped, recursion is stopped through `NALIAS_ALIAS_STACK`, and nesting is limited to 32. Use `nalias run <name> --dry-run` or global `--verbose` to inspect execution.
+Aliases are commands the user intentionally authorizes. Listing and loading never execute them. Names are ASCII-only, cannot traverse paths, and reject Windows device names and `nalias` (or you'd get an infinite loop and what have you). Wrapper writes reject symlinks and unrelated files. Generated wrappers carry a marker, and repair/uninstall delete only marked wrappers. Forwarded shell arguments are escaped, recursion is stopped through `NALIAS_ALIAS_STACK`, and nesting is limited to 32. Use `nalias run <name> --dry-run` or global `--verbose` to inspect execution.
 
 ## Troubleshooting
 

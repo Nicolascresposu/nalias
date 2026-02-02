@@ -10,6 +10,7 @@ pub struct AppPaths {
     pub config: PathBuf,
     pub bin: PathBuf,
     pub executable: PathBuf,
+    pub legacy_executable: PathBuf,
     pub lock: PathBuf,
 }
 
@@ -32,10 +33,12 @@ impl AppPaths {
     }
 
     pub fn from_root(root: PathBuf) -> Self {
+        let bin = root.join("bin");
         Self {
             config: root.join("aliases.json"),
-            bin: root.join("bin"),
-            executable: root.join("nalias.exe"),
+            executable: bin.join("nalias.exe"),
+            legacy_executable: root.join("nalias.exe"),
+            bin,
             lock: root.join("aliases.lock"),
             root,
         }

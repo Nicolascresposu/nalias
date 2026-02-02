@@ -93,7 +93,7 @@ mod tests {
         let paths = AppPaths::from_root(PathBuf::from(r"C:\Users\A B\Nalias"));
         let text = expected_contents(&paths, "gs").unwrap();
         assert!(text.contains(MARKER));
-        assert!(text.contains(r#""C:\Users\A B\Nalias\nalias.exe" run gs %*"#));
+        assert!(text.contains(r#""C:\Users\A B\Nalias\bin\nalias.exe" run gs %*"#));
         assert!(!text.contains("git status"));
     }
 

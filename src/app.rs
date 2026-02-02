@@ -83,6 +83,15 @@ fn init(paths: &AppPaths, args: InitArgs) -> Result<i32> {
         );
     }
 
+    migrate_legacy_executable(paths)?;
+    let repaired = repair(paths)?;
+    if repaired.created + repaired.repaired + repaired.removed > 0 {
+        println!(
+            "Updated wrappers: {} created, {} repaired, {} removed.",
+            repaired.created, repaired.repaired, repaired.removed
+        );
+    }
+
     if args.skip_path {
         println!("Skipped user PATH modification.");
     } else if AppPaths::is_overridden() {
@@ -102,6 +111,25 @@ fn init(paths: &AppPaths, args: InitArgs) -> Result<i32> {
     }
     println!("Nalias is initialized. Restart already-open terminals before using aliases.");
     Ok(0)
+}
+
+fn migrate_legacy_executable(paths: &AppPaths) -> Result<()> {
+    if !paths.legacy_executable.exists() || same_path(&paths.legacy_executable, &paths.executable) {
+        return Ok(());
+    }
+    match fs::remove_file(&paths.legacy_executable) {
+        Ok(()) => println!(
+            "Removed legacy executable: {}",
+            paths.legacy_executable.display()
+        ),
+        Err(error) => {
+            platform::defer_delete(&paths.legacy_executable, &paths.root)?;
+            eprintln!(
+                "warning: legacy executable is in use and was scheduled for deletion ({error})"
+            );
+        }
+    }
+    Ok(())
 }
 
 fn add(paths: &AppPaths, args: AddArgs) -> Result<i32> {
@@ -460,7 +488,10 @@ fn doctor(paths: &AppPaths) -> Result<i32> {
             let path = entry
                 .map_err(|e| NaliasError::io("could not inspect wrapper entry", e))?
                 .path();
-            if wrapper::is_generated_file(&path)? {
+            let is_cmd = path
+                .extension()
+                .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("cmd"));
+            if is_cmd && wrapper::is_generated_file(&path)? {
                 let stem = path
                     .file_stem()
                     .map(|value| canonical_name(&value.to_string_lossy()))
@@ -523,12 +554,14 @@ fn uninstall(paths: &AppPaths, args: UninstallArgs) -> Result<i32> {
             let path = entry
                 .map_err(|e| NaliasError::io("could not inspect wrapper entry", e))?
                 .path();
-            if wrapper::is_generated_file(&path)? {
+            let is_cmd = path
+                .extension()
+                .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("cmd"));
+            if is_cmd && wrapper::is_generated_file(&path)? {
                 fs::remove_file(&path)
                     .map_err(|e| NaliasError::io("could not remove generated wrapper", e))?;
             }
         }
-        let _ = fs::remove_dir(&paths.bin);
     }
     if !args.keep_config {
         for path in [&paths.config, &paths.config.with_extension("json.bak")] {
@@ -539,17 +572,16 @@ fn uninstall(paths: &AppPaths, args: UninstallArgs) -> Result<i32> {
         }
     }
 
+    let current = std::env::current_exe().unwrap_or_default();
     let mut deferred = false;
-    if paths.executable.exists() {
-        match fs::remove_file(&paths.executable) {
+    for executable in [&paths.executable, &paths.legacy_executable] {
+        if !executable.exists() {
+            continue;
+        }
+        match fs::remove_file(executable) {
             Ok(()) => {}
-            Err(error)
-                if same_path(
-                    &std::env::current_exe().unwrap_or_default(),
-                    &paths.executable,
-                ) =>
-            {
-                platform::defer_delete(&paths.executable)?;
+            Err(error) if same_path(&current, executable) => {
+                platform::defer_delete(executable, &paths.root)?;
                 deferred = true;
                 eprintln!(
                     "nalias.exe is in use and was scheduled for deletion after this process exits ({error})."
@@ -563,6 +595,7 @@ fn uninstall(paths: &AppPaths, args: UninstallArgs) -> Result<i32> {
             }
         }
     }
+    let _ = fs::remove_dir(&paths.bin);
     let _ = fs::remove_dir(&paths.root);
     if deferred {
         println!("Nalias was uninstalled; executable cleanup will finish shortly.");
