@@ -19,12 +19,19 @@ use crate::{platform, wrapper};
 
 pub fn dispatch(cli: Cli) -> Result<i32> {
     let paths = AppPaths::resolve()?;
+    let implicit_init = cli.command.is_none();
     let command = cli.command.unwrap_or(Command::Init(InitArgs {
         force: true,
         skip_path: false,
     }));
     match command {
-        Command::Init(args) => init(&paths, args),
+        Command::Init(args) => {
+            let exit_code = init(&paths, args)?;
+            if implicit_init {
+                println!("Use nalias --help for usage.");
+            }
+            Ok(exit_code)
+        }
         Command::Add(args) => add(&paths, args),
         Command::Run(args) => run(&paths, args, cli.verbose),
         Command::List(args) => list(&paths, args),

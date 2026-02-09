@@ -77,7 +77,8 @@ fn launching_without_arguments_initializes_and_force_updates() {
     let temp = tempfile::tempdir().unwrap();
     let home = temp.path().join("home");
 
-    succeed(&home, &[]);
+    let output = succeed(&home, &[]);
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Use nalias --help for usage."));
     let installed = home.join("bin").join("nalias.exe");
     assert!(installed.is_file());
     assert!(home.join("aliases.json").is_file());
@@ -101,6 +102,7 @@ fn launching_without_arguments_initializes_and_force_updates() {
         String::from_utf8_lossy(&output.stdout)
             .contains("Installed executable already matches this build")
     );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Use nalias --help for usage."));
 
     succeed(&home, &["add", "preserved", "echo preserved"]);
     std::fs::write(&installed, b"old executable").unwrap();
